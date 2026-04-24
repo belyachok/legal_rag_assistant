@@ -1,0 +1,40 @@
+﻿# Python
+venv/
+env/
+ENV/
+backend/venv/
+__pycache__/
+*.py[cod]
+*.so
+.Python
+
+# Фронтенд
+node_modules/
+frontend/node_modules/
+.cache/
+build/
+dist/
+
+# Переменные окружения
+.env
+.env.local
+.env.*.local
+
+# Логи
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Системные файлы
+.DS_Store
+Thumbs.db
+
+# Большие бинарные файлы
+*.pyd
+*.dll
+*.lib
+*.pyc
