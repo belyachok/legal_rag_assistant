@@ -174,6 +174,9 @@ class RAGService:
                 return "Я не нашел ответа в предоставленных документах.", [], (time.time() - start_time) * 1000
             
             sources = []
+            # Собираем текст из всех чанков
+            all_text = []
+            
             for i, result in enumerate(search_results):
                 chunk_text = result["text"]
                 metadata = result["metadata"]
@@ -182,13 +185,48 @@ class RAGService:
                 sources.append(Source(
                     document_id=metadata.get("document_id", ""),
                     document_name=metadata.get("document_name", "Unknown"),
-                    chunk_text=chunk_text[:500],
+                    chunk_text=chunk_text[:500] + ("..." if len(chunk_text) > 500 else ""),
                     page=metadata.get("page"),
                     relevance_score=similarity
                 ))
+                all_text.append(chunk_text)
             
-            # Формируем ответ из первого найденного фрагмента
-            answer = f"Найдена информация:\n\n{sources[0].chunk_text}"
+            # Объединяем текст
+            combined_text = " ".join(all_text)
+            
+            # Ищем предложение или фрагмент, наиболее релевантный вопросу
+            import re
+            
+            # Разбиваем текст на предложения (по точкам, вопросительным и восклицательным знакам)
+            sentences = re.split(r'(?<=[.!?])\s+', combined_text)
+            
+            # Ищем предложения, содержащие ключевые слова из вопроса
+            question_words = set(question.lower().replace('?', '').split())
+            # Убираем стоп-слова
+            stop_words = {'какая', 'какой', 'какое', 'какие', 'что', 'кто', 'где', 'когда', 'сколько', 'почему'}
+            question_keywords = [w for w in question_words if w not in stop_words and len(w) > 2]
+            
+            best_sentences = []
+            for sent in sentences:
+                sent_lower = sent.lower()
+                # Проверяем, есть ли в предложении ключевые слова
+                for kw in question_keywords:
+                    if kw in sent_lower:
+                        # Очищаем предложение
+                        clean_sent = re.sub(r'\s+', ' ', sent).strip()
+                        if len(clean_sent) > 20:  # Берём только осмысленные предложения
+                            best_sentences.append(clean_sent)
+                            break
+                if len(best_sentences) >= 2:
+                    break
+            
+            if best_sentences:
+                answer = "Ответ: " + " ".join(best_sentences)
+            else:
+                # Если не нашли по ключевым словам, берём первые 300 символов самого релевантного чанка
+                first_chunk = sources[0].chunk_text
+                short_answer = re.sub(r'\s+', ' ', first_chunk)[:300]
+                answer = short_answer + ("..." if len(first_chunk) > 300 else "")
             
             processing_time = (time.time() - start_time) * 1000
             return answer, sources, processing_time
